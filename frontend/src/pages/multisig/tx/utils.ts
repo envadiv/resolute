@@ -99,12 +99,17 @@ const parseDelegateMsg = (delegator: string, msg: string): Msg => {
     throw new Error("amount cannot be empty");
   }
 
+  // parseCoins returns Coin[], however, after spliting the msg, we're guaranteed there will only
+  // be (at most) one Coin to delegate. We can safely grab the first Coin from amounts[] to conform
+  // to /cosmos.staking.v1beta1.MsgDelegate
+  const amountToDelegate = amount[0];
+  debugger
   return {
     typeUrl: DELEGATE_TYPE_URL,
     value: {
       delegatorAddress: delegator,
       validatorAddress: validator,
-      amount: amount,
+      amount: amountToDelegate,
     },
   };
 };
