@@ -25,10 +25,13 @@ import CustomizedDialogs from "../../components/passage/disclaimer";
 import "./../common.css";
 import { networks } from "../../utils/chainsInfo";
 
-function getPasgNetwork() {
+function getPasgNetwork(pathParams) {
   for (let i = 0; i < networks.length; i++) {
     const network = networks[i];
-    if (network.config.currencies[0].coinMinimalDenom === "upasg") {
+    if (
+      network.config.currencies[0].coinMinimalDenom === "upasg" &&
+      network?.config?.chainName.toLowerCase() === pathParams?.networkName
+    ) {
       return network;
     }
   }
@@ -58,21 +61,35 @@ function getPassageAddress(address) {
 }
 
 export default function AirdropEligibility() {
-  const defaultChainID = "passage-1";
+  const defaultChainID = "passage-2";
+
+  const pathParams = useParams();
   const claimRecords = useSelector((state) => state.airdrop.claimRecords);
   const params = useSelector((state) => state.airdrop.params);
-  const [chainInfo, _] = useState(getPasgNetwork());
+  const nameToChainIDs = useSelector((state) => state.wallet.nameToChainIDs);
+  const [chainInfo, _] = useState(getPasgNetwork(pathParams));
   const status = useSelector((state) => state.airdrop.claimStatus);
   const errMsg = useSelector((state) => state.airdrop.errMsg);
   const txStatus = useSelector((state) => state.airdrop.tx.status);
-  const walletAddress = useSelector((state) => state.wallet.networks?.[defaultChainID]?.walletInfo?.bech32Address);
+  const walletAddress = useSelector(
+    (state) =>
+      state.wallet.networks?.[nameToChainIDs[pathParams?.networkName]]
+        ?.walletInfo?.bech32Address
+  );
   const currency = chainInfo.config.currencies[0];
+
+  const airdropActions = [{ title: "#1 Initial Claim", type: "action" }];
 
   const { handleSubmit, control, setValue, getValues } = useForm({
     defaultValues: {
       address: "",
     },
   });
+
+  let navigate = useNavigate();
+  function navigateTo(path) {
+    navigate(path);
+  }
 
   useEffect(() => {
     if (chainInfo.showAirdrop) {
@@ -121,11 +138,6 @@ export default function AirdropEligibility() {
     }
   }, [errMsg]);
 
-  let navigate = useNavigate();
-  function navigateTo(path) {
-    navigate(path);
-  }
-
   const dispatch = useDispatch();
   const onSubmit = (data) => {
     const [address, err] = getPassageAddress(data.address);
@@ -154,8 +166,9 @@ export default function AirdropEligibility() {
       total += parseFloat(record.amount / 10.0 ** currency.coinDecimals);
     }
 
-    return `${parseFloat(total.toFixed(6))?.toLocaleString()} ${currency.coinDenom
-      }`;
+    return `${parseFloat(total.toFixed(6))?.toLocaleString()} ${
+      currency.coinDenom
+    }`;
   };
 
   const calculateBonus = (records) => {
@@ -167,8 +180,9 @@ export default function AirdropEligibility() {
 
     const bonus = total + total / 2.0;
 
-    return `${parseFloat(bonus.toFixed(6))?.toLocaleString()} ${currency.coinDenom
-      }`;
+    return `${parseFloat(bonus.toFixed(6))?.toLocaleString()} ${
+      currency.coinDenom
+    }`;
   };
 
   const txAction1 = () => {
@@ -179,7 +193,9 @@ export default function AirdropEligibility() {
           denom: currency.coinMinimalDenom,
           chainId: chainInfo.config.chainId,
           rpc: chainInfo.config.rpc,
-          feeAmount: chainInfo.config.feeCurrencies[0].gasPriceStep.average * (10 ** currency.coinDecimals),
+          feeAmount:
+            chainInfo.config.feeCurrencies[0].gasPriceStep.average *
+            10 ** currency.coinDecimals,
           baseURL: chainInfo.config.rest,
           memo: "I agree to the passage airdrop terms and conditions",
         })
@@ -299,7 +315,7 @@ export default function AirdropEligibility() {
         </Grid>
         <Grid item xs={1} md={2}></Grid>
       </Grid>
-      {claimRecords?.address && chainInfo.airdropActions?.length > 0 ? (
+      {claimRecords?.address && airdropActions?.length > 0 ? (
         <Alert severity="info" style={{ textAlign: "left", marginTop: 8 }}>
           <AlertTitle>
             <Typography variant="body1" fontWeight={500}>
@@ -337,7 +353,7 @@ export default function AirdropEligibility() {
       )}
       {walletAddress?.length > 0 ? (
         claimRecords?.address === getValues().address &&
-          chainInfo.airdropActions?.length > 0 ? (
+        airdropActions?.length > 0 ? (
           <>
             <br />
             <Paper style={{ padding: 16, textAlign: "left" }} elevation={0}>
@@ -355,7 +371,7 @@ export default function AirdropEligibility() {
               <Typography color="text.primary" variant="h5" fontWeight={600}>
                 Missions
               </Typography>
-              {chainInfo.airdropActions.map((item, index) =>
+              {airdropActions.map((item, index) =>
                 item.type === "action" ? (
                   <Paper key={index} elevation={1} className="claim-item">
                     <Typography
@@ -381,7 +397,7 @@ export default function AirdropEligibility() {
                       }
                     >
                       {claimRecords?.action_completed.length >= index &&
-                        claimRecords?.action_completed[index] === true ? (
+                      claimRecords?.action_completed[index] === true ? (
                         `Claimed`
                       ) : txStatus === "pending" ? (
                         <CircularProgress size={25} />
@@ -411,7 +427,7 @@ export default function AirdropEligibility() {
                       }
                     >
                       {claimRecords?.action_completed.length >= index &&
-                        claimRecords?.action_completed[index] === true
+                      claimRecords?.action_completed[index] === true
                         ? `Claimed`
                         : `Claim`}
                     </Button>
